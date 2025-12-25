@@ -1,0 +1,28 @@
+# Build output
+build/
+go-codesign
+
+.zsign_cache/
+
+# Test binaries
+*.test
+
+# Test data (downloaded on demand)
+pkg/codesign/testdata/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# Environment variables (contains sensitive data)
+.env
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# macOS
+.DS_Store
