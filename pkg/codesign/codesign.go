@@ -27,8 +27,8 @@ import (
 	"github.com/blacktop/go-macho"
 	"github.com/blacktop/go-macho/types"
 	"go.mozilla.org/pkcs7"
-	gop12 "software.sslmate.com/src/go-pkcs12"
 	"howett.net/plist"
+	gop12 "software.sslmate.com/src/go-pkcs12"
 )
 
 // Mach-O header sizes
@@ -39,9 +39,9 @@ const (
 
 // Mach-O magic numbers
 const (
-	MH_MAGIC    = 0xfeedface // 32-bit little-endian
-	MH_MAGIC_64 = 0xfeedfacf // 64-bit little-endian
-	FAT_MAGIC   = 0xcafebabe // Fat binary (big-endian)
+	MH_MAGIC     = 0xfeedface // 32-bit little-endian
+	MH_MAGIC_64  = 0xfeedfacf // 64-bit little-endian
+	FAT_MAGIC    = 0xcafebabe // Fat binary (big-endian)
 	FAT_MAGIC_64 = 0xcafebabf // Fat binary 64 (big-endian)
 )
 
@@ -53,26 +53,26 @@ const (
 
 // Code signature magic numbers (from Apple's cs_blobs.h)
 const (
-	CSMAGIC_REQUIREMENT             = 0xfade0c00
-	CSMAGIC_REQUIREMENTS            = 0xfade0c01
-	CSMAGIC_CODEDIRECTORY           = 0xfade0c02
-	CSMAGIC_EMBEDDED_SIGNATURE      = 0xfade0cc0
-	CSMAGIC_EMBEDDED_ENTITLEMENTS   = 0xfade7171
+	CSMAGIC_REQUIREMENT               = 0xfade0c00
+	CSMAGIC_REQUIREMENTS              = 0xfade0c01
+	CSMAGIC_CODEDIRECTORY             = 0xfade0c02
+	CSMAGIC_EMBEDDED_SIGNATURE        = 0xfade0cc0
+	CSMAGIC_EMBEDDED_ENTITLEMENTS     = 0xfade7171
 	CSMAGIC_EMBEDDED_DER_ENTITLEMENTS = 0xfade7172
-	CSMAGIC_BLOBWRAPPER             = 0xfade0b01
+	CSMAGIC_BLOBWRAPPER               = 0xfade0b01
 )
 
 // Code signature slot indices
 const (
-	CSSLOT_CODEDIRECTORY              = 0
-	CSSLOT_INFOSLOT                   = 1
-	CSSLOT_REQUIREMENTS               = 2
-	CSSLOT_RESOURCEDIR                = 3
-	CSSLOT_APPLICATION                = 4
-	CSSLOT_ENTITLEMENTS               = 5
-	CSSLOT_DER_ENTITLEMENTS           = 7
-	CSSLOT_ALTERNATE_CODEDIRECTORIES  = 0x1000
-	CSSLOT_SIGNATURESLOT              = 0x10000
+	CSSLOT_CODEDIRECTORY             = 0
+	CSSLOT_INFOSLOT                  = 1
+	CSSLOT_REQUIREMENTS              = 2
+	CSSLOT_RESOURCEDIR               = 3
+	CSSLOT_APPLICATION               = 4
+	CSSLOT_ENTITLEMENTS              = 5
+	CSSLOT_DER_ENTITLEMENTS          = 7
+	CSSLOT_ALTERNATE_CODEDIRECTORIES = 0x1000
+	CSSLOT_SIGNATURESLOT             = 0x10000
 )
 
 // Code directory hash types
@@ -105,8 +105,8 @@ const FatArchAlignment = 0x4000 // 16KB
 
 // Apple certificate URLs
 const (
-	AppleRootCAURL  = "https://www.apple.com/appleca/AppleIncRootCertificate.cer"
-	AppleWWDRG3URL  = "https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer"
+	AppleRootCAURL = "https://www.apple.com/appleca/AppleIncRootCertificate.cer"
+	AppleWWDRG3URL = "https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer"
 )
 
 // Apple Root CA certificate (DER-encoded, base64) - fallback if download fails
@@ -924,7 +924,7 @@ func buildDesignatedRequirementWithCert(bundleID string, signerCN string) []byte
 		data := []byte(s)
 		strLen := len(data)
 		paddedLen := (strLen + 3) &^ 3
-		binary.Write(&exprData, binary.BigEndian, uint32(strLen))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(strLen))
 		exprData.Write(data)
 		for i := strLen; i < paddedLen; i++ {
 			exprData.WriteByte(0)
@@ -932,37 +932,37 @@ func buildDesignatedRequirementWithCert(bundleID string, signerCN string) []byte
 	}
 
 	if signerCN == "" {
-		binary.Write(&exprData, binary.BigEndian, uint32(opAnd))
-		binary.Write(&exprData, binary.BigEndian, uint32(opIdent))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opAnd))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opIdent))
 		writeString(bundleID)
-		binary.Write(&exprData, binary.BigEndian, uint32(opAppleGenericAnchor))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opAppleGenericAnchor))
 	} else {
-		binary.Write(&exprData, binary.BigEndian, uint32(opAnd))
-		binary.Write(&exprData, binary.BigEndian, uint32(opIdent))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opAnd))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opIdent))
 		writeString(bundleID)
 
-		binary.Write(&exprData, binary.BigEndian, uint32(opAnd))
-		binary.Write(&exprData, binary.BigEndian, uint32(opAppleGenericAnchor))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opAnd))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opAppleGenericAnchor))
 
-		binary.Write(&exprData, binary.BigEndian, uint32(opAnd))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opAnd))
 
-		binary.Write(&exprData, binary.BigEndian, uint32(opCertField))
-		binary.Write(&exprData, binary.BigEndian, uint32(0))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opCertField))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(0))
 		writeString("subject.CN")
-		binary.Write(&exprData, binary.BigEndian, uint32(matchEqual))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(matchEqual))
 		writeString(signerCN)
 
 		appleDevOID := []byte{0x2a, 0x86, 0x48, 0x86, 0xf7, 0x63, 0x64, 0x06, 0x02, 0x01}
-		binary.Write(&exprData, binary.BigEndian, uint32(opCertGeneric))
-		binary.Write(&exprData, binary.BigEndian, uint32(1))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(opCertGeneric))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(1))
 		oidLen := len(appleDevOID)
 		paddedOIDLen := (oidLen + 3) &^ 3
-		binary.Write(&exprData, binary.BigEndian, uint32(oidLen))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(oidLen))
 		exprData.Write(appleDevOID)
 		for i := oidLen; i < paddedOIDLen; i++ {
 			exprData.WriteByte(0)
 		}
-		binary.Write(&exprData, binary.BigEndian, uint32(matchExists))
+		_ = binary.Write(&exprData, binary.BigEndian, uint32(matchExists))
 	}
 
 	expr := exprData.Bytes()
@@ -1335,22 +1335,4 @@ func GetBundleIDFromPlist(plistPath string) (string, error) {
 		return bid, nil
 	}
 	return "", fmt.Errorf("CFBundleIdentifier not found")
-}
-
-// copyFileStreaming copies a file using streaming I/O for large files
-func copyFileStreaming(src, dst string, mode os.FileMode) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	return err
 }

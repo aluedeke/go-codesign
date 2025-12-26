@@ -11,11 +11,7 @@ import (
 )
 
 // Version info - set by goreleaser ldflags
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
-)
+var version = "dev"
 
 const usage = `go-codesign - iOS App Code Signing Tool
 

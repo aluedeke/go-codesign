@@ -18,12 +18,12 @@ type SignatureDiff struct {
 
 // BundleDiff represents differences for a single bundle
 type BundleDiff struct {
-	RelativePath   string
-	SuperBlobDiff  FieldDiff
-	CodeDirDiffs   []CodeDirDiff
+	RelativePath     string
+	SuperBlobDiff    FieldDiff
+	CodeDirDiffs     []CodeDirDiff
 	RequirementsDiff FieldDiff
 	EntitlementsDiff EntitlementsDiff
-	CMSDiff        FieldDiff
+	CMSDiff          FieldDiff
 
 	// Only in one app
 	OnlyIn1 bool
@@ -41,16 +41,16 @@ type FieldDiff struct {
 
 // CodeDirDiff represents CodeDirectory differences
 type CodeDirDiff struct {
-	Slot            uint32
-	HashType        string
-	VersionDiff     FieldDiff
-	FlagsDiff       FieldDiff
-	IdentifierDiff  FieldDiff
-	TeamIDDiff      FieldDiff
-	PageSizeDiff    FieldDiff
-	CodeLimitDiff   FieldDiff
+	Slot             uint32
+	HashType         string
+	VersionDiff      FieldDiff
+	FlagsDiff        FieldDiff
+	IdentifierDiff   FieldDiff
+	TeamIDDiff       FieldDiff
+	PageSizeDiff     FieldDiff
+	CodeLimitDiff    FieldDiff
 	SpecialSlotDiffs []FieldDiff
-	CodeHashesSame  bool
+	CodeHashesSame   bool
 	CodeHashesCount1 int
 	CodeHashesCount2 int
 }
@@ -58,8 +58,8 @@ type CodeDirDiff struct {
 // EntitlementsDiff represents entitlements differences
 type EntitlementsDiff struct {
 	Same    bool
-	Added   map[string]interface{} // In 2 but not in 1
-	Removed map[string]interface{} // In 1 but not in 2
+	Added   map[string]interface{}    // In 2 but not in 1
+	Removed map[string]interface{}    // In 1 but not in 2
 	Changed map[string][2]interface{} // Different values
 }
 

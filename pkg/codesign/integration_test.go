@@ -1,7 +1,6 @@
 package codesign
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"os"
 	"os/exec"
@@ -131,19 +130,6 @@ func TestSignatureSlotHashes(t *testing.T) {
 	}
 }
 
-// Helper function to extract hash bytes from plist value
-func extractHashBytes(v interface{}) []byte {
-	switch val := v.(type) {
-	case []byte:
-		return val
-	case map[string]interface{}:
-		if hash, ok := val["hash"].([]byte); ok {
-			return hash
-		}
-	}
-	return nil
-}
-
 // Helper function to find P12 certificate file
 func findP12File(t *testing.T) string {
 	// Check common locations
@@ -216,28 +202,4 @@ func copyDir(src, dst string) error {
 
 		return os.WriteFile(dstPath, data, info.Mode())
 	})
-}
-
-// Helper function to compare plists semantically
-func comparePlists(t *testing.T, name string, orig, gen map[string]interface{}) {
-	origFiles, _ := orig[name].(map[string]interface{})
-	genFiles, _ := gen[name].(map[string]interface{})
-
-	if origFiles == nil || genFiles == nil {
-		return
-	}
-
-	for path, origVal := range origFiles {
-		genVal, exists := genFiles[path]
-		if !exists {
-			t.Errorf("Missing %s in generated '%s': %s", path, name, path)
-			continue
-		}
-
-		origHash := extractHashBytes(origVal)
-		genHash := extractHashBytes(genVal)
-		if !bytes.Equal(origHash, genHash) {
-			t.Errorf("Hash mismatch for %s in '%s'", path, name)
-		}
-	}
 }

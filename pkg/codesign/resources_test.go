@@ -248,8 +248,8 @@ func TestShouldOmit(t *testing.T) {
 		{"AppIcon.png", false},
 		{"Frameworks/Foo.framework/_CodeSignature/CodeResources", false},
 		{"PlugIns/Widget.appex/_CodeSignature/CodeResources", false},
-		{"_CodeSignature", false},                // Not omitted by shouldOmit anymore
-		{"_CodeSignature/CodeResources", false},  // Handled in GenerateCodeResources
+		{"_CodeSignature", false},               // Not omitted by shouldOmit anymore
+		{"_CodeSignature/CodeResources", false}, // Handled in GenerateCodeResources
 	}
 
 	for _, tc := range tests {
