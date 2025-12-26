@@ -10,7 +10,12 @@ import (
 	"github.com/docopt/docopt-go"
 )
 
-const version = "1.0.0"
+// Version info - set by goreleaser ldflags
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
 
 const usage = `go-codesign - iOS App Code Signing Tool
 

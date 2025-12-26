@@ -24,3 +24,6 @@ pkg/codesign/testdata/
 
 # macOS
 .DS_Store
+
+# zsign cache
+.zsign_cache/
