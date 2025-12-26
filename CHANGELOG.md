@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/aluedeke/go-codesign/compare/v1.0.2...v1.0.3) (2025-12-26)
+
+
+### Bug Fixes
+
+* normalize paths to forward slashes for cross-platform compatibility ([92edfaa](https://github.com/aluedeke/go-codesign/commit/92edfaaa3ccff4999d744a580c7cf33ce3726998))
+
 ## [1.0.2](https://github.com/aluedeke/go-codesign/compare/v1.0.1...v1.0.2) (2025-12-26)
 
 
