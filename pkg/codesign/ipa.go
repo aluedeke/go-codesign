@@ -21,16 +21,16 @@ func ExtractIPA(ipaPath string) (string, error) {
 	// Open the IPA (ZIP file)
 	r, err := zip.OpenReader(ipaPath)
 	if err != nil {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 		return "", fmt.Errorf("failed to open IPA: %w", err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	// Extract all files
 	for _, f := range r.File {
 		err := extractZipFile(f, tempDir)
 		if err != nil {
-			os.RemoveAll(tempDir)
+			_ = os.RemoveAll(tempDir)
 			return "", fmt.Errorf("failed to extract %s: %w", f.Name, err)
 		}
 	}
@@ -59,14 +59,14 @@ func extractZipFile(f *zip.File, destDir string) error {
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	// Copy contents
 	srcFile, err := f.Open()
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	_, err = io.Copy(destFile, srcFile)
 	return err
@@ -98,11 +98,11 @@ func RepackageIPA(extractedDir, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	// Create ZIP writer
 	w := zip.NewWriter(outFile)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	// Walk the extracted directory and add files
 	err = filepath.Walk(extractedDir, func(path string, info os.FileInfo, err error) error {
@@ -148,7 +148,7 @@ func RepackageIPA(extractedDir, outputPath string) error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		_, err = io.Copy(writer, file)
 		return err
@@ -247,13 +247,13 @@ func copyFile(src, dst string, mode os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+	defer func() { _ = dstFile.Close() }()
 
 	_, err = io.Copy(dstFile, srcFile)
 	return err

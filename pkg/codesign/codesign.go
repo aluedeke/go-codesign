@@ -165,7 +165,7 @@ func downloadCertificate(url string) (*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to download certificate: %s", resp.Status)
@@ -459,7 +459,7 @@ func NativeSignMachOWithContext(path string, identity *SigningIdentity, entitlem
 	if err != nil {
 		return fmt.Errorf("failed to parse Mach-O: %w", err)
 	}
-	defer m.Close()
+	defer func() { _ = m.Close() }()
 
 	signedData, err := nativeSignThinMachOWithContext(data, m, identity, entitlements, bundleID, bundleCtx)
 	if err != nil {
@@ -484,10 +484,11 @@ func nativeSignThinMachOWithContext(data []byte, m *macho.File, identity *Signin
 	cmdOffset := headerSize
 	for _, load := range m.Loads {
 		if seg, ok := load.(*macho.Segment); ok {
-			if seg.Name == "__TEXT" {
+			switch seg.Name {
+			case "__TEXT":
 				textOffset = seg.Offset
 				textSize = seg.Filesz
-			} else if seg.Name == "__LINKEDIT" {
+			case "__LINKEDIT":
 				linkeditSegOffset = cmdOffset
 				linkeditFileoff = seg.Offset
 			}
@@ -763,7 +764,7 @@ func createSignatureWithContext(codeData []byte, identity *SigningIdentity, enti
 	outp = put32be(outp, uint32(cdirSHA256Offset))
 
 	outp = put32be(outp, CSSLOT_SIGNATURESLOT)
-	outp = put32be(outp, uint32(cmsOffset))
+	_ = put32be(outp, uint32(cmsOffset))
 
 	copy(superBlob[cdirSHA1Offset:], cdirSHA1)
 	copy(superBlob[reqOffset:], reqBlob)
@@ -900,7 +901,7 @@ func buildRequirementsBlobWithCert(bundleID string, signerCN string) []byte {
 	outp = put32be(outp, reqCount)
 
 	outp = put32be(outp, 3) // kSecDesignatedRequirementType
-	outp = put32be(outp, headerSize)
+	_ = put32be(outp, headerSize)
 
 	copy(blob[headerSize:], reqExpr)
 
@@ -1129,7 +1130,7 @@ func nativeSignFatMachOWithContext(path string, data []byte, identity *SigningId
 	if err != nil {
 		return fmt.Errorf("failed to parse fat binary: %w", err)
 	}
-	defer fat.Close()
+	defer func() { _ = fat.Close() }()
 
 	signedArches := make([][]byte, len(fat.Arches))
 	for i, arch := range fat.Arches {
@@ -1153,7 +1154,7 @@ func nativeSignFatMachOWithContext(path string, data []byte, identity *SigningId
 		}
 
 		signedArch, err := nativeSignThinMachOWithContext(archData, m, identity, entitlements, bundleID, bundleCtx)
-		m.Close()
+		_ = m.Close()
 		if err != nil {
 			return fmt.Errorf("failed to sign arch %d: %w", i, err)
 		}

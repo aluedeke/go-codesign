@@ -9,6 +9,16 @@ import (
 	"sort"
 )
 
+// fprint is a helper that ignores fmt.Fprintf errors (for CLI output)
+func fprint(w io.Writer, format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(w, format, a...)
+}
+
+// fprintln is a helper that ignores fmt.Fprintln errors (for CLI output)
+func fprintln(w io.Writer) {
+	_, _ = fmt.Fprintln(w)
+}
+
 // SignatureDiff represents the differences between two signatures
 type SignatureDiff struct {
 	Path1       string
@@ -210,7 +220,7 @@ func compareCodeDirectories(cd1, cd2 *CodeDirectoryInfo) CodeDirDiff {
 		-7: "EntitlementsDER",
 	}
 
-	var slots []int
+	slots := make([]int, 0, len(allSlots))
 	for slot := range allSlots {
 		slots = append(slots, slot)
 	}
@@ -314,10 +324,10 @@ func getHashTypeName(hashType uint8) string {
 
 // PrintSignatureDiff prints a signature diff to a writer
 func PrintSignatureDiff(diff *SignatureDiff, w io.Writer) {
-	fmt.Fprintf(w, "Comparing:\n")
-	fmt.Fprintf(w, "  App 1: %s\n", diff.Path1)
-	fmt.Fprintf(w, "  App 2: %s\n", diff.Path2)
-	fmt.Fprintln(w)
+	fprint(w, "Comparing:\n")
+	fprint(w, "  App 1: %s\n", diff.Path1)
+	fprint(w, "  App 2: %s\n", diff.Path2)
+	fprintln(w)
 
 	for _, bundleDiff := range diff.BundleDiffs {
 		printBundleDiff(&bundleDiff, w)
@@ -326,14 +336,14 @@ func PrintSignatureDiff(diff *SignatureDiff, w io.Writer) {
 
 // printBundleDiff prints a single bundle diff
 func printBundleDiff(diff *BundleDiff, w io.Writer) {
-	fmt.Fprintf(w, "=== %s ===\n", diff.RelativePath)
+	fprint(w, "=== %s ===\n", diff.RelativePath)
 
 	if diff.OnlyIn1 {
-		fmt.Fprintf(w, "  Only in App 1\n")
+		fprint(w, "  Only in App 1\n")
 		return
 	}
 	if diff.OnlyIn2 {
-		fmt.Fprintf(w, "  Only in App 2\n")
+		fprint(w, "  Only in App 2\n")
 		return
 	}
 
@@ -354,7 +364,7 @@ func printBundleDiff(diff *BundleDiff, w io.Writer) {
 	// CMS
 	printFieldDiff(w, "CMS Signature", diff.CMSDiff)
 
-	fmt.Fprintln(w)
+	fprintln(w)
 }
 
 // printFieldDiff prints a field diff
@@ -365,21 +375,24 @@ func printFieldDiff(w io.Writer, name string, diff FieldDiff) {
 	}
 
 	if diff.Same {
-		fmt.Fprintf(w, "  %-16s %s (%s)\n", name+":", status, diff.Value1)
+		fprint(w, "  %-16s %s (%s)\n", name+":", status, diff.Value1)
 	} else {
-		fmt.Fprintf(w, "  %-16s %s\n", name+":", status)
-		fmt.Fprintf(w, "    - App 1: %s\n", diff.Value1)
-		fmt.Fprintf(w, "    + App 2: %s\n", diff.Value2)
+		fprint(w, "  %-16s %s\n", name+":", status)
+		fprint(w, "    - App 1: %s\n", diff.Value1)
+		fprint(w, "    + App 2: %s\n", diff.Value2)
 	}
 }
 
 // printCodeDirDiff prints a CodeDirectory diff
 func printCodeDirDiff(w io.Writer, diff *CodeDirDiff) {
-	slotName := "CodeDirectory"
-	if diff.Slot == CSSLOT_ALTERNATE_CODEDIRECTORIES {
+	var slotName string
+	switch diff.Slot {
+	case CSSLOT_ALTERNATE_CODEDIRECTORIES:
 		slotName = "CodeDirectory (SHA256)"
-	} else if diff.Slot == CSSLOT_CODEDIRECTORY {
+	case CSSLOT_CODEDIRECTORY:
 		slotName = "CodeDirectory (SHA1)"
+	default:
+		slotName = "CodeDirectory"
 	}
 
 	// Check if all fields are same
@@ -395,28 +408,28 @@ func printCodeDirDiff(w io.Writer, diff *CodeDirDiff) {
 	}
 
 	if allSame && diff.CodeHashesSame {
-		fmt.Fprintf(w, "  %-16s SAME\n", slotName+":")
+		fprint(w, "  %-16s SAME\n", slotName+":")
 		return
 	}
 
-	fmt.Fprintf(w, "  %-16s\n", slotName+":")
+	fprint(w, "  %-16s\n", slotName+":")
 
 	if !diff.VersionDiff.Same {
-		fmt.Fprintf(w, "    Version:      DIFFER (%s vs %s)\n", diff.VersionDiff.Value1, diff.VersionDiff.Value2)
+		fprint(w, "    Version:      DIFFER (%s vs %s)\n", diff.VersionDiff.Value1, diff.VersionDiff.Value2)
 	}
 	if !diff.IdentifierDiff.Same {
-		fmt.Fprintf(w, "    Identifier:   DIFFER\n")
-		fmt.Fprintf(w, "      - App 1: %s\n", diff.IdentifierDiff.Value1)
-		fmt.Fprintf(w, "      + App 2: %s\n", diff.IdentifierDiff.Value2)
+		fprint(w, "    Identifier:   DIFFER\n")
+		fprint(w, "      - App 1: %s\n", diff.IdentifierDiff.Value1)
+		fprint(w, "      + App 2: %s\n", diff.IdentifierDiff.Value2)
 	}
 	if !diff.TeamIDDiff.Same {
-		fmt.Fprintf(w, "    Team ID:      DIFFER (%s vs %s)\n", diff.TeamIDDiff.Value1, diff.TeamIDDiff.Value2)
+		fprint(w, "    Team ID:      DIFFER (%s vs %s)\n", diff.TeamIDDiff.Value1, diff.TeamIDDiff.Value2)
 	}
 	if !diff.PageSizeDiff.Same {
-		fmt.Fprintf(w, "    Page Size:    DIFFER (%s vs %s)\n", diff.PageSizeDiff.Value1, diff.PageSizeDiff.Value2)
+		fprint(w, "    Page Size:    DIFFER (%s vs %s)\n", diff.PageSizeDiff.Value1, diff.PageSizeDiff.Value2)
 	}
 	if !diff.CodeLimitDiff.Same {
-		fmt.Fprintf(w, "    Code Limit:   DIFFER (%s vs %s)\n", diff.CodeLimitDiff.Value1, diff.CodeLimitDiff.Value2)
+		fprint(w, "    Code Limit:   DIFFER (%s vs %s)\n", diff.CodeLimitDiff.Value1, diff.CodeLimitDiff.Value2)
 	}
 
 	// Special slots
@@ -429,13 +442,13 @@ func printCodeDirDiff(w io.Writer, diff *CodeDirDiff) {
 	}
 
 	if hasDifferentSlots {
-		fmt.Fprintf(w, "    Special Slots:\n")
+		fprint(w, "    Special Slots:\n")
 		for _, slotDiff := range diff.SpecialSlotDiffs {
 			status := "SAME"
 			if !slotDiff.Same {
 				status = "DIFFER"
 			}
-			fmt.Fprintf(w, "      %s: %s\n", slotDiff.Name, status)
+			fprint(w, "      %s: %s\n", slotDiff.Name, status)
 			if !slotDiff.Same {
 				v1 := slotDiff.Value1
 				v2 := slotDiff.Value2
@@ -445,41 +458,41 @@ func printCodeDirDiff(w io.Writer, diff *CodeDirDiff) {
 				if len(v2) > 40 {
 					v2 = v2[:40] + "..."
 				}
-				fmt.Fprintf(w, "        - App 1: %s\n", v1)
-				fmt.Fprintf(w, "        + App 2: %s\n", v2)
+				fprint(w, "        - App 1: %s\n", v1)
+				fprint(w, "        + App 2: %s\n", v2)
 			}
 		}
 	} else {
-		fmt.Fprintf(w, "    Special Slots: SAME\n")
+		fprint(w, "    Special Slots: SAME\n")
 	}
 
 	// Code hashes
 	if diff.CodeHashesSame {
-		fmt.Fprintf(w, "    Code Hashes:  SAME (%d pages)\n", diff.CodeHashesCount1)
+		fprint(w, "    Code Hashes:  SAME (%d pages)\n", diff.CodeHashesCount1)
 	} else {
-		fmt.Fprintf(w, "    Code Hashes:  DIFFER (%d vs %d pages)\n", diff.CodeHashesCount1, diff.CodeHashesCount2)
+		fprint(w, "    Code Hashes:  DIFFER (%d vs %d pages)\n", diff.CodeHashesCount1, diff.CodeHashesCount2)
 	}
 }
 
 // printEntitlementsDiff prints entitlements diff
 func printEntitlementsDiff(w io.Writer, diff *EntitlementsDiff) {
 	if diff.Same {
-		fmt.Fprintf(w, "  %-16s SAME\n", "Entitlements:")
+		fprint(w, "  %-16s SAME\n", "Entitlements:")
 		return
 	}
 
-	fmt.Fprintf(w, "  %-16s DIFFER\n", "Entitlements:")
+	fprint(w, "  %-16s DIFFER\n", "Entitlements:")
 
 	for key, val := range diff.Removed {
-		fmt.Fprintf(w, "    - %s: %v\n", key, val)
+		fprint(w, "    - %s: %v\n", key, val)
 	}
 	for key, val := range diff.Added {
-		fmt.Fprintf(w, "    + %s: %v\n", key, val)
+		fprint(w, "    + %s: %v\n", key, val)
 	}
 	for key, vals := range diff.Changed {
-		fmt.Fprintf(w, "    ~ %s:\n", key)
-		fmt.Fprintf(w, "      - App 1: %v\n", vals[0])
-		fmt.Fprintf(w, "      + App 2: %v\n", vals[1])
+		fprint(w, "    ~ %s:\n", key)
+		fprint(w, "      - App 1: %v\n", vals[0])
+		fprint(w, "      + App 2: %v\n", vals[1])
 	}
 }
 
@@ -527,7 +540,7 @@ func CompareBundles(path1, path2 string, recursive bool) (*SignatureDiff, error)
 	}
 
 	// Sort paths for consistent output
-	var sortedPaths []string
+	sortedPaths := make([]string, 0, len(allPaths))
 	for path := range allPaths {
 		sortedPaths = append(sortedPaths, path)
 	}

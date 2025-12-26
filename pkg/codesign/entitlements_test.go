@@ -157,7 +157,7 @@ func TestEntitlementsToDER_SortedKeys(t *testing.T) {
 		t.Fatalf("Keys not found in DER output")
 	}
 
-	if !(aPos < mPos && mPos < zPos) {
+	if aPos >= mPos || mPos >= zPos {
 		t.Errorf("Keys should be sorted alphabetically: a-key at %d, m-key at %d, z-key at %d",
 			aPos, mPos, zPos)
 	}

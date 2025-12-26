@@ -133,12 +133,7 @@ func ResignApp(appPath string, identity *SigningIdentity, profile *ProvisioningP
 
 	// Replace provisioning profile
 	embeddedProfilePath := filepath.Join(appPath, "embedded.mobileprovision")
-	profileData, err := os.ReadFile(embeddedProfilePath)
-	if err == nil {
-		// There was an existing profile, we need the raw bytes
-		// This is a simplified path - in real usage, you'd pass the profile bytes
-	}
-	_ = profileData // Suppress unused warning
+	_, _ = os.ReadFile(embeddedProfilePath) // Check if existing profile exists (ignored for now)
 
 	// Update Info.plist if needed
 	if newBundleID != "" {
