@@ -59,8 +59,12 @@ func GenerateCodeResources(appPath string) ([]byte, error) {
 			return err
 		}
 
+		// Normalize to forward slashes for cross-platform consistency
+		// CodeResources keys must use forward slashes (iOS/macOS format)
+		relPath = filepath.ToSlash(relPath)
+
 		// Skip the main app's _CodeSignature/CodeResources only
-		if relPath == filepath.Join("_CodeSignature", "CodeResources") {
+		if relPath == "_CodeSignature/CodeResources" {
 			return nil
 		}
 
@@ -201,6 +205,7 @@ func Base64Hash(hash []byte) string {
 }
 
 // findNestedBundlePaths returns relative paths to all nested bundles in the app
+// Paths are normalized to use forward slashes for cross-platform consistency
 func findNestedBundlePaths(appPath string) []string {
 	var bundles []string
 
@@ -215,7 +220,8 @@ func findNestedBundlePaths(appPath string) []string {
 		}
 
 		if isNestedBundle(relPath) {
-			bundles = append(bundles, relPath)
+			// Normalize to forward slashes for cross-platform consistency
+			bundles = append(bundles, filepath.ToSlash(relPath))
 			return filepath.SkipDir // Don't recurse into nested bundles
 		}
 

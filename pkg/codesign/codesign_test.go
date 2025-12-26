@@ -1058,7 +1058,8 @@ func TestGenerateCodeResourcesIncludesNestedBundleContents(t *testing.T) {
 	}
 
 	// SHOULD have Frameworks/Nested.framework/_CodeSignature/CodeResources
-	codeResKey := filepath.Join("Frameworks", "Nested.framework", "_CodeSignature", "CodeResources")
+	// CodeResources keys always use forward slashes
+	codeResKey := "Frameworks/Nested.framework/_CodeSignature/CodeResources"
 	if _, ok := files[codeResKey]; !ok {
 		t.Errorf("files should contain %s for nested bundle's CodeResources", codeResKey)
 	}
