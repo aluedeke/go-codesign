@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.3](https://github.com/aluedeke/go-codesign/compare/v0.0.2...v0.0.3) (2025-12-27)
+
+
+### Bug Fixes
+
+* add schema and glob:false for extra-files config ([fe2f584](https://github.com/aluedeke/go-codesign/commit/fe2f584cdd932282dff6ea078680dc9b6290c362))
+* specify jsonpath for npm/package.json version updates ([753fbb1](https://github.com/aluedeke/go-codesign/commit/753fbb145e469e53222fe386defd1ce80ffa5f19))
+* use OIDC trusted publisher for npm and fix version ([d6d3b62](https://github.com/aluedeke/go-codesign/commit/d6d3b62bf0d35dd519811cf29aa1a73956ba54f4))
+
 ## [0.0.2](https://github.com/aluedeke/go-codesign/compare/v0.0.1...v0.0.2) (2025-12-27)
 
 
