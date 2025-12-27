@@ -1,0 +1,34 @@
+{
+  "name": "go-codesign",
+  "version": "1.0.0",
+  "description": "Pure Go implementation for iOS code signing - resign IPA files and .app bundles without macOS",
+  "keywords": [
+    "ios",
+    "codesign",
+    "ipa",
+    "resign",
+    "code-signing",
+    "apple",
+    "mobile"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aluedeke/go-codesign.git"
+  },
+  "license": "MIT",
+  "author": "Andreas Lüdeke",
+  "preferGlobal": false,
+  "bin": {
+    "go-codesign": "bin/go-codesign"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "bin",
+    "scripts"
+  ]
+}

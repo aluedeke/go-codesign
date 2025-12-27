@@ -1,6 +1,6 @@
 # iOS Code Signing in Pure Go
 
-This package implements iOS IPA re-signing entirely in Go, without requiring external tools like `codesign`, `zsign`, or macOS. It produces signatures compatible with iOS 15+ devices.
+This package implements iOS IPA re-signing entirely in Go, without requiring external tools like `codesign` or macOS. It produces signatures compatible with iOS 15+ devices.
 
 ## Table of Contents
 

@@ -16,6 +16,11 @@ import (
 	"go.mozilla.org/pkcs7"
 )
 
+// fprintf is a helper that ignores fmt.Fprintf errors (for CLI output)
+func fprintf(w io.Writer, format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(w, format, a...)
+}
+
 // SignatureInfo holds parsed code signature details
 type SignatureInfo struct {
 	BinaryPath      string
@@ -185,11 +190,11 @@ func ParseSignatureFromData(data []byte, binaryPath, bundlePath string) (*Signat
 			info.Requirements = parseRequirements(blobData)
 		case CSSLOT_ENTITLEMENTS:
 			info.Entitlements = parseEntitlements(blobData)
-		case CSSLOT_ENTITLEMENTS_DER:
+		case CSSLOT_DER_ENTITLEMENTS:
 			if len(blobData) > 8 {
 				info.EntitlementsDER = blobData[8:] // Skip magic and length
 			}
-		case CSSLOT_CMS_SIGNATURE:
+		case CSSLOT_SIGNATURESLOT:
 			info.CMSSignature = parseCMSSignature(blobData, info.CodeDirs)
 		}
 	}
@@ -334,14 +339,8 @@ func parseCMSSignature(data []byte, codeDirs []CodeDirectoryInfo) CMSInfo {
 	info.RawData = cmsData
 
 	// Compute CDHashes from CodeDirectories
-	for _, cd := range codeDirs {
-		if cd.Slot == CSSLOT_CODEDIRECTORY && cd.HashType == CS_HASHTYPE_SHA1 {
-			// Find the raw CD data to hash
-			// For now, search for CDHash in CMS
-		} else if cd.Slot == CSSLOT_ALTERNATE_CODEDIRECTORIES && cd.HashType == CS_HASHTYPE_SHA256 {
-			// SHA256 CD
-		}
-	}
+	// Currently just iterating to identify CDs - hash computation done via CMS
+	_ = codeDirs
 
 	// Try to parse CMS/PKCS7
 	p7, err := pkcs7.Parse(cmsData)
@@ -363,20 +362,8 @@ func parseCMSSignature(data []byte, codeDirs []CodeDirectoryInfo) CMSInfo {
 		}
 	}
 
-	// Look for CDHash in CMS data (it's embedded as an attribute)
-	// Search for SHA1 hash (20 bytes) and SHA256 hash (truncated to 20 bytes)
-	for _, cd := range codeDirs {
-		var cdHash []byte
-		// We need the raw CD blob to compute the hash
-		// For now, we'll search for patterns in the CMS data
-		if cd.HashType == CS_HASHTYPE_SHA1 {
-			// SHA1 CDHash would be sha1(cd blob)
-			cdHash = make([]byte, 20)
-		} else if cd.HashType == CS_HASHTYPE_SHA256 {
-			cdHash = make([]byte, 20) // Truncated
-		}
-		_ = cdHash
-	}
+	// CDHash computation from CDs is handled elsewhere
+	// The CDHash is embedded in CMS attributes
 
 	return info
 }
@@ -384,7 +371,9 @@ func parseCMSSignature(data []byte, codeDirs []CodeDirectoryInfo) CMSInfo {
 // isAlphanumeric checks if a string contains only alphanumeric characters
 func isAlphanumeric(s string) bool {
 	for _, r := range s {
-		if !((r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')) {
+		isUpper := r >= 'A' && r <= 'Z'
+		isDigit := r >= '0' && r <= '9'
+		if !isUpper && !isDigit {
 			return false
 		}
 	}
@@ -398,7 +387,7 @@ func PrintSignatureInfo(info *SignatureInfo, w io.Writer, bundlePath string) {
 	if info.RelativePath != "" {
 		displayPath = info.RelativePath
 	}
-	fmt.Fprintf(w, "\n=== %s ===\n", displayPath)
+	fprintf(w, "\n=== %s ===\n", displayPath)
 
 	// Find bundle ID from first CodeDirectory
 	var identifier, teamID string
@@ -412,14 +401,14 @@ func PrintSignatureInfo(info *SignatureInfo, w io.Writer, bundlePath string) {
 	}
 
 	if identifier != "" {
-		fmt.Fprintf(w, "Identifier: %s\n", identifier)
+		fprintf(w, "Identifier: %s\n", identifier)
 	}
 	if teamID != "" {
-		fmt.Fprintf(w, "Team ID:    %s\n", teamID)
+		fprintf(w, "Team ID:    %s\n", teamID)
 	}
 
-	fmt.Fprintf(w, "\nCode Signature:\n")
-	fmt.Fprintf(w, "  SuperBlob: %d blobs, %d bytes\n", info.SuperBlob.BlobCount, info.SuperBlob.Length)
+	fprintf(w, "\nCode Signature:\n")
+	fprintf(w, "  SuperBlob: %d blobs, %d bytes\n", info.SuperBlob.BlobCount, info.SuperBlob.Length)
 
 	// Print each blob
 	for i, blob := range info.SuperBlob.Blobs {
@@ -434,7 +423,7 @@ func PrintSignatureInfo(info *SignatureInfo, w io.Writer, bundlePath string) {
 		}
 
 		blobName := getBlobTypeName(blob.Type)
-		fmt.Fprintf(w, "  %s %s: slot 0x%x, %d bytes\n", prefix, blobName, blob.Type, blob.Size)
+		fprintf(w, "  %s %s: slot 0x%x, %d bytes\n", prefix, blobName, blob.Type, blob.Size)
 
 		// Print details for CodeDirectory
 		for _, cd := range info.CodeDirs {
@@ -446,17 +435,17 @@ func PrintSignatureInfo(info *SignatureInfo, w io.Writer, bundlePath string) {
 		// Print entitlements summary
 		if blob.Type == CSSLOT_ENTITLEMENTS && len(info.Entitlements.Parsed) > 0 {
 			for key, value := range info.Entitlements.Parsed {
-				fmt.Fprintf(w, "  %s  %s: %v\n", childPrefix, key, value)
+				fprintf(w, "  %s  %s: %v\n", childPrefix, key, value)
 			}
 		}
 
 		// Print CMS details
-		if blob.Type == CSSLOT_CMS_SIGNATURE {
+		if blob.Type == CSSLOT_SIGNATURESLOT {
 			if info.CMSSignature.SignerCN != "" {
-				fmt.Fprintf(w, "  %sSigner: %s\n", childPrefix, info.CMSSignature.SignerCN)
+				fprintf(w, "  %sSigner: %s\n", childPrefix, info.CMSSignature.SignerCN)
 			}
 			if info.CMSSignature.SignerTeamID != "" {
-				fmt.Fprintf(w, "  %sTeam ID: %s\n", childPrefix, info.CMSSignature.SignerTeamID)
+				fprintf(w, "  %sTeam ID: %s\n", childPrefix, info.CMSSignature.SignerTeamID)
 			}
 		}
 	}
@@ -472,17 +461,17 @@ func printCodeDirectoryDetails(w io.Writer, cd *CodeDirectoryInfo, prefix string
 		hashTypeName = "SHA-256"
 	}
 
-	fmt.Fprintf(w, "  %sVersion: 0x%x\n", prefix, cd.Version)
-	fmt.Fprintf(w, "  %sHash Type: %s (%d bytes)\n", prefix, hashTypeName, cd.HashSize)
-	fmt.Fprintf(w, "  %sPage Size: %d\n", prefix, cd.PageSize)
-	fmt.Fprintf(w, "  %sCode Limit: %d\n", prefix, cd.CodeLimit)
+	fprintf(w, "  %sVersion: 0x%x\n", prefix, cd.Version)
+	fprintf(w, "  %sHash Type: %s (%d bytes)\n", prefix, hashTypeName, cd.HashSize)
+	fprintf(w, "  %sPage Size: %d\n", prefix, cd.PageSize)
+	fprintf(w, "  %sCode Limit: %d\n", prefix, cd.CodeLimit)
 
 	if cd.Version >= 0x20400 {
-		fmt.Fprintf(w, "  %sExec Seg: base=0x%x, limit=0x%x, flags=0x%x\n",
+		fprintf(w, "  %sExec Seg: base=0x%x, limit=0x%x, flags=0x%x\n",
 			prefix, cd.ExecSegBase, cd.ExecSegLimit, cd.ExecSegFlags)
 	}
 
-	fmt.Fprintf(w, "  %sSpecial Slots: %d\n", prefix, cd.NSpecialSlots)
+	fprintf(w, "  %sSpecial Slots: %d\n", prefix, cd.NSpecialSlots)
 
 	// Print special slot hashes
 	slotNames := map[int]string{
@@ -526,11 +515,11 @@ func printCodeDirectoryDetails(w io.Writer, cd *CodeDirectoryInfo, prefix string
 				}
 			}
 
-			fmt.Fprintf(w, "  %s  %d (%s): %s%s\n", prefix, slot, name, hashStr, verified)
+			fprintf(w, "  %s  %d (%s): %s%s\n", prefix, slot, name, hashStr, verified)
 		}
 	}
 
-	fmt.Fprintf(w, "  %sCode Slots: %d\n", prefix, cd.NCodeSlots)
+	fprintf(w, "  %sCode Slots: %d\n", prefix, cd.NCodeSlots)
 }
 
 // verifyFileHash verifies a file's hash matches the expected hash
@@ -564,14 +553,14 @@ func getBlobTypeName(blobType uint32) string {
 		return "Requirements"
 	case CSSLOT_ENTITLEMENTS:
 		return "Entitlements"
-	case CSSLOT_ENTITLEMENTS_DER:
+	case CSSLOT_DER_ENTITLEMENTS:
 		return "EntitlementsDER"
-	case CSSLOT_CMS_SIGNATURE:
+	case CSSLOT_SIGNATURESLOT:
 		return "CMS Signature"
 	case CSSLOT_ALTERNATE_CODEDIRECTORIES:
 		return "CodeDirectory (SHA256)"
 	default:
-		if blobType >= CSSLOT_ALTERNATE_CODEDIRECTORIES && blobType < CSSLOT_CMS_SIGNATURE {
+		if blobType >= CSSLOT_ALTERNATE_CODEDIRECTORIES && blobType < CSSLOT_SIGNATURESLOT {
 			return fmt.Sprintf("CodeDirectory (alt 0x%x)", blobType)
 		}
 		return fmt.Sprintf("Unknown (0x%x)", blobType)

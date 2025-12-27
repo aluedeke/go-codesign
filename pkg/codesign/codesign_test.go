@@ -105,12 +105,12 @@ func TestCodeDirectoryPageSize(t *testing.T) {
 		t.Fatal("Could not find CodeDirectory")
 	}
 
-	// pageSize is at offset 39
-	pageSizeBitsValue := sigData[cdirOffset+39]
+	// PageSize is at offset 39
+	PageSizeBitsValue := sigData[cdirOffset+39]
 
 	// Should be 14 (1 << 14 = 16384)
-	if pageSizeBitsValue != 14 {
-		t.Errorf("Expected pageSizeBits 14 (16KB), got %d", pageSizeBitsValue)
+	if PageSizeBitsValue != 14 {
+		t.Errorf("Expected PageSizeBits 14 (16KB), got %d", PageSizeBitsValue)
 	}
 }
 
@@ -217,8 +217,8 @@ func TestSuperBlobStructure(t *testing.T) {
 		CSSLOT_CODEDIRECTORY,
 		CSSLOT_REQUIREMENTS,
 		CSSLOT_ENTITLEMENTS,
-		CSSLOT_ENTITLEMENTS_DER,
-		CSSLOT_CMS_SIGNATURE,
+		CSSLOT_DER_ENTITLEMENTS,
+		CSSLOT_SIGNATURESLOT,
 	}
 
 	for _, slot := range expectedSlots {
@@ -246,7 +246,7 @@ func TestEntitlementsBlobMagic(t *testing.T) {
 		switch slotType {
 		case CSSLOT_ENTITLEMENTS:
 			entOffset = offset
-		case CSSLOT_ENTITLEMENTS_DER:
+		case CSSLOT_DER_ENTITLEMENTS:
 			entDEROffset = offset
 		}
 	}
@@ -260,8 +260,8 @@ func TestEntitlementsBlobMagic(t *testing.T) {
 
 	if entDEROffset > 0 {
 		magic := binary.BigEndian.Uint32(sigData[entDEROffset : entDEROffset+4])
-		if magic != CSMAGIC_EMBEDDED_ENTITLEMENTS_DER {
-			t.Errorf("Expected DER entitlements magic 0x%x, got 0x%x", CSMAGIC_EMBEDDED_ENTITLEMENTS_DER, magic)
+		if magic != CSMAGIC_EMBEDDED_DER_ENTITLEMENTS {
+			t.Errorf("Expected DER entitlements magic 0x%x, got 0x%x", CSMAGIC_EMBEDDED_DER_ENTITLEMENTS, magic)
 		}
 	}
 }
@@ -269,7 +269,7 @@ func TestEntitlementsBlobMagic(t *testing.T) {
 // TestBuildRequirementsBlob verifies our requirements blob matches expected format
 func TestBuildRequirementsBlob(t *testing.T) {
 	bundleID := "com.example.testapp"
-	blob := buildRequirementsBlob(bundleID)
+	blob := buildRequirementsBlobWithCert(bundleID, "")
 
 	// Check magic
 	if len(blob) < 8 {
@@ -628,8 +628,8 @@ func TestBuildEntitlementsDERBlob(t *testing.T) {
 
 	// Check magic
 	magic := binary.BigEndian.Uint32(blob[0:4])
-	if magic != CSMAGIC_EMBEDDED_ENTITLEMENTS_DER {
-		t.Errorf("Expected DER entitlements magic 0x%x, got 0x%x", CSMAGIC_EMBEDDED_ENTITLEMENTS_DER, magic)
+	if magic != CSMAGIC_EMBEDDED_DER_ENTITLEMENTS {
+		t.Errorf("Expected DER entitlements magic 0x%x, got 0x%x", CSMAGIC_EMBEDDED_DER_ENTITLEMENTS, magic)
 	}
 
 	// Check that DER content starts with APPLICATION 16 tag (0x70)
@@ -641,7 +641,7 @@ func TestBuildEntitlementsDERBlob(t *testing.T) {
 // TestCodePageHashing verifies our page hashing matches Apple's implementation
 func TestCodePageHashing(t *testing.T) {
 	// Create test data (2 pages worth)
-	testData := make([]byte, pageSize*2+1000)
+	testData := make([]byte, PageSize*2+1000)
 	for i := range testData {
 		testData[i] = byte(i % 256)
 	}
@@ -649,8 +649,8 @@ func TestCodePageHashing(t *testing.T) {
 	// Hash pages the way we do it
 	var ourHashes [][]byte
 	codeSize := int64(len(testData))
-	for p := int64(0); p < codeSize; p += pageSize {
-		end := p + pageSize
+	for p := int64(0); p < codeSize; p += PageSize {
+		end := p + PageSize
 		if end > codeSize {
 			end = codeSize
 		}
@@ -659,19 +659,19 @@ func TestCodePageHashing(t *testing.T) {
 	}
 
 	// We should have 3 hashes (2 full pages + 1 partial)
-	expectedPages := (len(testData) + pageSize - 1) / pageSize
+	expectedPages := (len(testData) + PageSize - 1) / PageSize
 	if len(ourHashes) != expectedPages {
 		t.Errorf("Expected %d page hashes, got %d", expectedPages, len(ourHashes))
 	}
 
 	// First page should be full 16KB
-	expectedHash := sha256.Sum256(testData[0:pageSize])
+	expectedHash := sha256.Sum256(testData[0:PageSize])
 	if !bytes.Equal(ourHashes[0], expectedHash[:]) {
 		t.Error("First page hash mismatch")
 	}
 
 	// Last page should be the remaining data
-	lastStart := int64(pageSize * 2)
+	lastStart := int64(PageSize * 2)
 	expectedLastHash := sha256.Sum256(testData[lastStart:])
 	if !bytes.Equal(ourHashes[2], expectedLastHash[:]) {
 		t.Error("Last page hash mismatch")
@@ -689,7 +689,7 @@ func TestSignatureConstants(t *testing.T) {
 		{"CSMAGIC_CODEDIRECTORY", CSMAGIC_CODEDIRECTORY, 0xfade0c02},
 		{"CSMAGIC_EMBEDDED_SIGNATURE", CSMAGIC_EMBEDDED_SIGNATURE, 0xfade0cc0},
 		{"CSMAGIC_EMBEDDED_ENTITLEMENTS", CSMAGIC_EMBEDDED_ENTITLEMENTS, 0xfade7171},
-		{"CSMAGIC_EMBEDDED_ENTITLEMENTS_DER", CSMAGIC_EMBEDDED_ENTITLEMENTS_DER, 0xfade7172},
+		{"CSMAGIC_EMBEDDED_DER_ENTITLEMENTS", CSMAGIC_EMBEDDED_DER_ENTITLEMENTS, 0xfade7172},
 		{"CSMAGIC_REQUIREMENTS", CSMAGIC_REQUIREMENTS, 0xfade0c01},
 		{"CSMAGIC_BLOBWRAPPER", CSMAGIC_BLOBWRAPPER, 0xfade0b01},
 	}
@@ -890,6 +890,181 @@ func TestBuildCDHashesPlist(t *testing.T) {
 		t.Errorf("Second hash should be []byte, got %T", hashArray[1])
 	} else if len(hash2) != 20 {
 		t.Errorf("Second hash should be 20 bytes (truncated), got %d", len(hash2))
+	}
+}
+
+// TestNestedBundleDetection verifies isNestedBundle correctly identifies bundle types
+func TestNestedBundleDetection(t *testing.T) {
+	tests := []struct {
+		path     string
+		expected bool
+	}{
+		{"Frameworks/MyLib.framework", true},
+		{"PlugIns/MyTest.xctest", true},
+		{"PlugIns/MyExtension.appex", true},
+		{"Watch/MyWatch.app", true},
+		{"some/regular/file.txt", false},
+		{"Frameworks/MyLib.framework/Resources/data.plist", false}, // file inside framework
+		{"Info.plist", false},
+		{"embedded.mobileprovision", false},
+	}
+
+	for _, tc := range tests {
+		result := isNestedBundle(tc.path)
+		if result != tc.expected {
+			t.Errorf("isNestedBundle(%q) = %v, expected %v", tc.path, result, tc.expected)
+		}
+	}
+}
+
+// TestFindNestedBundlePaths verifies we find all nested bundles in a directory structure
+func TestFindNestedBundlePaths(t *testing.T) {
+	// Create a temp directory structure simulating an app bundle
+	tempDir, err := os.MkdirTemp("", "test-app-bundle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create nested bundle directories
+	dirs := []string{
+		"Frameworks/Lib1.framework",
+		"Frameworks/Lib2.framework",
+		"PlugIns/Test.xctest",
+		"PlugIns/Test.xctest/Frameworks/NestedLib.framework", // nested inside xctest
+		"Watch/WatchApp.app",
+		"Regular/Directory", // not a bundle
+	}
+
+	for _, dir := range dirs {
+		if err := os.MkdirAll(filepath.Join(tempDir, dir), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	bundles := findNestedBundlePaths(tempDir)
+
+	// Should find 5 bundles (Lib1, Lib2, Test.xctest, WatchApp.app, but NOT NestedLib since we skip into xctest)
+	// Actually, we skip into nested bundles, so we should find:
+	// - Frameworks/Lib1.framework
+	// - Frameworks/Lib2.framework
+	// - PlugIns/Test.xctest
+	// - Watch/WatchApp.app
+	// NOT PlugIns/Test.xctest/Frameworks/NestedLib.framework (skipped because we don't recurse into xctest)
+	expectedCount := 4
+	if len(bundles) != expectedCount {
+		t.Errorf("Expected %d nested bundles, found %d: %v", expectedCount, len(bundles), bundles)
+	}
+
+	// Verify specific bundles are found
+	expectedBundles := map[string]bool{
+		"Frameworks/Lib1.framework": true,
+		"Frameworks/Lib2.framework": true,
+		"PlugIns/Test.xctest":       true,
+		"Watch/WatchApp.app":        true,
+	}
+
+	for _, bundle := range bundles {
+		if !expectedBundles[bundle] {
+			t.Errorf("Unexpected bundle found: %s", bundle)
+		}
+		delete(expectedBundles, bundle)
+	}
+
+	for missing := range expectedBundles {
+		t.Errorf("Expected bundle not found: %s", missing)
+	}
+}
+
+// TestGenerateCodeResourcesIncludesNestedBundleContents verifies all nested bundle files are included
+// ALL files are hashed, including those inside nested bundles
+func TestGenerateCodeResourcesIncludesNestedBundleContents(t *testing.T) {
+	// Create a temp app bundle with nested framework
+	tempDir, err := os.MkdirTemp("", "test-app-bundle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Create Info.plist (required)
+	infoPlist := `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>TestApp</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.test.app</string>
+</dict>
+</plist>`
+	if err := os.WriteFile(filepath.Join(tempDir, "Info.plist"), []byte(infoPlist), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a regular file that should be hashed
+	if err := os.WriteFile(filepath.Join(tempDir, "Assets.car"), []byte("asset data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a nested framework with files that SHOULD be hashed
+	frameworkDir := filepath.Join(tempDir, "Frameworks", "Nested.framework")
+	if err := os.MkdirAll(frameworkDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(frameworkDir, "Nested"), []byte("binary"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(frameworkDir, "Info.plist"), []byte(infoPlist), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create _CodeSignature/CodeResources for the nested framework (simulating it's already signed)
+	codeSignDir := filepath.Join(frameworkDir, "_CodeSignature")
+	if err := os.MkdirAll(codeSignDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(codeSignDir, "CodeResources"), []byte("signed"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Generate CodeResources
+	codeResData, err := GenerateCodeResources(tempDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Parse the result
+	var codeRes map[string]interface{}
+	if _, err := plist.Unmarshal(codeResData, &codeRes); err != nil {
+		t.Fatal(err)
+	}
+
+	files := codeRes["files"].(map[string]interface{})
+	files2 := codeRes["files2"].(map[string]interface{})
+
+	// Should have Assets.car
+	if _, ok := files["Assets.car"]; !ok {
+		t.Error("Assets.car should be in files")
+	}
+
+	// SHOULD have Frameworks/Nested.framework/Nested (all nested bundle files are included)
+	if _, ok := files["Frameworks/Nested.framework/Nested"]; !ok {
+		t.Error("Frameworks/Nested.framework/Nested SHOULD be in files (all nested bundle files are included)")
+	}
+
+	// SHOULD have Frameworks/Nested.framework/Info.plist (all nested bundle files are included)
+	if _, ok := files["Frameworks/Nested.framework/Info.plist"]; !ok {
+		t.Error("Frameworks/Nested.framework/Info.plist SHOULD be in files (all nested bundle files are included)")
+	}
+
+	// SHOULD have Frameworks/Nested.framework/_CodeSignature/CodeResources
+	// CodeResources keys always use forward slashes
+	codeResKey := "Frameworks/Nested.framework/_CodeSignature/CodeResources"
+	if _, ok := files[codeResKey]; !ok {
+		t.Errorf("files should contain %s for nested bundle's CodeResources", codeResKey)
+	}
+	if _, ok := files2[codeResKey]; !ok {
+		t.Errorf("files2 should contain %s for nested bundle's CodeResources", codeResKey)
 	}
 }
 

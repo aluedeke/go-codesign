@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -98,15 +99,6 @@ func getTestAppPath(t *testing.T) string {
 	return getTestDataPath(t)
 }
 
-// skipIfNoTestData skips the test if test data is not available and cannot be downloaded
-func skipIfNoTestData(t *testing.T) string {
-	appPath := getTestDataPath(t)
-	if _, err := os.Stat(appPath); os.IsNotExist(err) {
-		t.Skip("Test app not available")
-	}
-	return appPath
-}
-
 func fileChecksum(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -154,7 +146,7 @@ func extractZip(src, dest string) error {
 		fpath := filepath.Join(dest, f.Name)
 
 		// Check for ZipSlip vulnerability
-		if !filepath.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
 			return fmt.Errorf("invalid file path: %s", fpath)
 		}
 

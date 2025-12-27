@@ -2,8 +2,6 @@
 build/
 go-codesign
 
-.zsign_cache/
-
 # Test binaries
 *.test
 
@@ -26,3 +24,6 @@ pkg/codesign/testdata/
 
 # macOS
 .DS_Store
+
+# zsign cache
+.zsign_cache/

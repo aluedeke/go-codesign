@@ -1,5 +1,7 @@
 # go-codesign
 
+> **Alpha Status**: This project is in early development. The API may change, and there may be bugs or missing features. Use at your own risk and please report any issues you encounter.
+
 A pure Go implementation for iOS code signing. Resign IPA files and `.app` bundles with new certificates and provisioning profiles without requiring Apple's `codesign` tool or macOS.
 
 ## Features
@@ -215,7 +217,7 @@ go-codesign implements Apple's code signing format natively in Go:
 5. **Embeds entitlements** in both XML and DER format
 6. **Updates load commands** to include the new signature
 
-The implementation is based on Apple's code signing documentation and matches the output of tools like `zsign`.
+The implementation is based on Apple's code signing documentation.
 
 ## Limitations
 
@@ -233,5 +235,5 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ## Acknowledgments
 
-- Inspired by [zsign](https://github.com/zhlynn/zsign)
+- Special thanks to the author of [zsign](https://github.com/zhlynn/zsign) for their excellent work on iOS code signing, which served as the primary reference for this implementation
 - Uses [go-ios](https://github.com/danielpaulus/go-ios) for device testing

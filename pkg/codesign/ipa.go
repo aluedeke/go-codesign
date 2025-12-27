@@ -21,16 +21,16 @@ func ExtractIPA(ipaPath string) (string, error) {
 	// Open the IPA (ZIP file)
 	r, err := zip.OpenReader(ipaPath)
 	if err != nil {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 		return "", fmt.Errorf("failed to open IPA: %w", err)
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	// Extract all files
 	for _, f := range r.File {
 		err := extractZipFile(f, tempDir)
 		if err != nil {
-			os.RemoveAll(tempDir)
+			_ = os.RemoveAll(tempDir)
 			return "", fmt.Errorf("failed to extract %s: %w", f.Name, err)
 		}
 	}
@@ -40,8 +40,13 @@ func ExtractIPA(ipaPath string) (string, error) {
 
 func extractZipFile(f *zip.File, destDir string) error {
 	// Sanitize the file path to prevent zip slip
+	// ZIP paths always use forward slashes, but filepath.Join handles this correctly
+	// We need to use filepath.Clean on destDir to get the canonical form for comparison
+	cleanDestDir := filepath.Clean(destDir)
 	destPath := filepath.Join(destDir, f.Name)
-	if !strings.HasPrefix(destPath, filepath.Clean(destDir)+string(os.PathSeparator)) {
+	// Use filepath.Clean to normalize the joined path, then verify it's under destDir
+	// Note: We append os.PathSeparator to avoid matching partial directory names
+	if !strings.HasPrefix(filepath.Clean(destPath), cleanDestDir+string(os.PathSeparator)) && filepath.Clean(destPath) != cleanDestDir {
 		return fmt.Errorf("invalid file path: %s", f.Name)
 	}
 
@@ -59,14 +64,14 @@ func extractZipFile(f *zip.File, destDir string) error {
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	// Copy contents
 	srcFile, err := f.Open()
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	_, err = io.Copy(destFile, srcFile)
 	return err
@@ -98,11 +103,11 @@ func RepackageIPA(extractedDir, outputPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	// Create ZIP writer
 	w := zip.NewWriter(outFile)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	// Walk the extracted directory and add files
 	err = filepath.Walk(extractedDir, func(path string, info os.FileInfo, err error) error {
@@ -148,7 +153,7 @@ func RepackageIPA(extractedDir, outputPath string) error {
 		if err != nil {
 			return err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		_, err = io.Copy(writer, file)
 		return err
@@ -241,14 +246,20 @@ func CopyAppBundle(src, dst string) error {
 	})
 }
 
-// copyFile copies a single file from src to dst with the given mode
+// copyFile copies a single file from src to dst with the given mode using streaming I/O
 func copyFile(src, dst string, mode os.FileMode) error {
-	// Read source file
-	data, err := os.ReadFile(src)
+	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
+	defer func() { _ = srcFile.Close() }()
 
-	// Write to destination file
-	return os.WriteFile(dst, data, mode)
+	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = dstFile.Close() }()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
 }

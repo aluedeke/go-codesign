@@ -26,6 +26,8 @@ type CodeResourcesRules struct {
 }
 
 // GenerateCodeResources generates the _CodeSignature/CodeResources plist
+// This hashes ALL files recursively, including those inside nested bundles
+// (.framework, .xctest, etc.)
 func GenerateCodeResources(appPath string) ([]byte, error) {
 	// CodeResources has two sections: files and files2
 	// files uses SHA1 (legacy), files2 uses SHA256
@@ -36,7 +38,11 @@ func GenerateCodeResources(appPath string) ([]byte, error) {
 	rules := defaultRules()
 	rules2 := defaultRules2()
 
-	// Walk the app bundle and hash files
+	// Get the main executable name to exclude it
+	execName, _ := GetAppExecutableName(appPath)
+
+	// Walk the app bundle and hash ALL files recursively
+	// Nested bundle contents are included in the hash
 	err := filepath.Walk(appPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -53,13 +59,16 @@ func GenerateCodeResources(appPath string) ([]byte, error) {
 			return err
 		}
 
-		// Skip _CodeSignature directory
-		if strings.HasPrefix(relPath, "_CodeSignature") {
+		// Normalize to forward slashes for cross-platform consistency
+		// CodeResources keys must use forward slashes (iOS/macOS format)
+		relPath = filepath.ToSlash(relPath)
+
+		// Skip the main app's _CodeSignature/CodeResources only
+		if relPath == "_CodeSignature/CodeResources" {
 			return nil
 		}
 
 		// Skip the main executable (it's signed separately)
-		execName, _ := GetAppExecutableName(appPath)
 		if relPath == execName {
 			return nil
 		}
@@ -88,7 +97,7 @@ func GenerateCodeResources(appPath string) ([]byte, error) {
 			files[relPath] = hash
 		}
 
-		// Add to files2 with both hash (SHA1) and hash2 (SHA256) like zsign does
+		// Add to files2 with both hash (SHA1) and hash2 (SHA256)
 		// Some files like Info.plist and PkgInfo are in 'files' but not 'files2'
 		if !shouldOmitFromFiles2(relPath) {
 			hash2, err := hashFileSHA256(path)
@@ -96,7 +105,7 @@ func GenerateCodeResources(appPath string) ([]byte, error) {
 				return fmt.Errorf("failed to hash2 %s: %w", relPath, err)
 			}
 
-			// zsign includes both hash (SHA1) and hash2 (SHA256) in files2
+			// Include both hash (SHA1) and hash2 (SHA256) in files2
 			files2Entry := map[string]interface{}{
 				"hash":  hash,
 				"hash2": hash2,
@@ -158,7 +167,7 @@ func hashFile(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	// Use SHA1 for legacy 'files' section
 	h := sha1.New()
@@ -174,7 +183,7 @@ func hashFileSHA256(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
@@ -195,28 +204,70 @@ func Base64Hash(hash []byte) string {
 	return base64.StdEncoding.EncodeToString(hash)
 }
 
+// findNestedBundlePaths returns relative paths to all nested bundles in the app
+// Paths are normalized to use forward slashes for cross-platform consistency
+func findNestedBundlePaths(appPath string) []string {
+	var bundles []string
+
+	_ = filepath.Walk(appPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil || !info.IsDir() {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(appPath, path)
+		if err != nil || relPath == "." {
+			return nil
+		}
+
+		if isNestedBundle(relPath) {
+			// Normalize to forward slashes for cross-platform consistency
+			bundles = append(bundles, filepath.ToSlash(relPath))
+			return filepath.SkipDir // Don't recurse into nested bundles
+		}
+
+		return nil
+	})
+
+	return bundles
+}
+
+// isNestedBundle returns true if the path is a nested bundle (.framework, .xctest, .appex, .app)
+func isNestedBundle(relPath string) bool {
+	ext := filepath.Ext(relPath)
+	switch ext {
+	case ".framework", ".xctest", ".appex", ".app":
+		return true
+	}
+	return false
+}
+
 func shouldOmit(path string) bool {
 	// Files that should be omitted from signing
-	omitPatterns := []string{
-		".DS_Store",
-		".git",
-		"._",
-	}
 
-	for _, pattern := range omitPatterns {
-		if strings.Contains(path, pattern) || strings.HasPrefix(path, pattern) {
-			return true
-		}
-	}
-
-	// Skip the main app's _CodeSignature but include nested bundle signatures
-	// The main app's _CodeSignature at root should be omitted
-	if path == "_CodeSignature" || strings.HasPrefix(path, "_CodeSignature/") {
+	// Skip .DS_Store files
+	if strings.HasSuffix(path, ".DS_Store") {
 		return true
 	}
 
-	// Nested bundles' _CodeSignature/CodeResources should be included
-	// (e.g., Frameworks/Foo.framework/_CodeSignature/CodeResources)
+	// Skip .git files
+	if strings.Contains(path, ".git") {
+		return true
+	}
+
+	// Skip AppleDouble files (._*)
+	base := filepath.Base(path)
+	if strings.HasPrefix(base, "._") {
+		return true
+	}
+
+	// Skip locversion.plist files
+	if strings.HasSuffix(path, ".lproj/locversion.plist") {
+		return true
+	}
+
+	// Note: We do NOT skip nested bundle _CodeSignature directories here
+	// All _CodeSignature/CodeResources files from nested bundles are included
+	// The main app's _CodeSignature/CodeResources is skipped in GenerateCodeResources
 
 	return false
 }
@@ -239,7 +290,7 @@ func shouldOmitFromFiles2(path string) bool {
 }
 
 func defaultRules() map[string]interface{} {
-	// Use float64 for weights to match zsign's <real> type in plist output
+	// Use float64 for weights to produce <real> type in plist output
 	return map[string]interface{}{
 		"^.*": true,
 		"^.*\\.lproj/": map[string]interface{}{
@@ -258,13 +309,13 @@ func defaultRules() map[string]interface{} {
 }
 
 func defaultRules2() map[string]interface{} {
-	// Use float64 for weights to match zsign's <real> type in plist output
+	// Use float64 for weights to produce <real> type in plist output
 	return map[string]interface{}{
 		"^.*": true,
 		".*\\.dSYM($|/)": map[string]interface{}{
 			"weight": float64(11),
 		},
-		// zsign includes DS_Store omit rule
+		// DS_Store omit rule
 		"^(.*/)?\\.DS_Store$": map[string]interface{}{
 			"omit":   true,
 			"weight": float64(2000),
@@ -288,7 +339,7 @@ func defaultRules2() map[string]interface{} {
 			"omit":   true,
 			"weight": float64(20),
 		},
-		// zsign uses provisionprofile (note: different from mobileprovision)
+		// provisionprofile rule (note: different from mobileprovision)
 		"^embedded\\.provisionprofile$": map[string]interface{}{
 			"weight": float64(20),
 		},

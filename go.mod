@@ -1,6 +1,6 @@
 module github.com/aluedeke/go-codesign
 
-go 1.25.5
+go 1.21
 
 require (
 	github.com/blacktop/go-macho v1.1.258

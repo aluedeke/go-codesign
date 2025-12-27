@@ -34,6 +34,7 @@ jobs:
         run: go build -v ./...
 
       - name: Test
+        shell: bash
         run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
 
       - name: Upload coverage
@@ -56,9 +57,9 @@ jobs:
           go-version: '1.23'
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: latest
+          version: v2.1
 
   build:
     name: Build Binaries

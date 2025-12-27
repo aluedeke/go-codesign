@@ -86,7 +86,7 @@ func (p *ProvisioningProfile) IsDeviceAllowed(udid string) bool {
 
 // GetCertificates parses and returns the developer certificates from the profile
 func (p *ProvisioningProfile) GetCertificates() ([]*x509.Certificate, error) {
-	var certs []*x509.Certificate
+	certs := make([]*x509.Certificate, 0, len(p.DeveloperCertificates))
 	for i, certData := range p.DeveloperCertificates {
 		cert, err := x509.ParseCertificate(certData)
 		if err != nil {

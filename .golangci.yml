@@ -1,53 +1,62 @@
+version: "2"
+
 run:
   timeout: 5m
   modules-download-mode: readonly
 
+issues:
+  max-same-issues: 50
+
 linters:
+  default: none
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
-    - goimports
     - misspell
     - unconvert
     - unparam
     - prealloc
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: false
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
 
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
 
-  gofmt:
-    simplify: true
+    misspell:
+      locale: US
 
-  goimports:
-    local-prefixes: github.com/aluedeke/go-codesign
+  exclusions:
+    presets:
+      - common-false-positives
+    rules:
+      # Exclude some linters from running on test files
+      - path: _test\.go
+        linters:
+          - errcheck
+          - unparam
 
-  misspell:
-    locale: US
+      # Exclude shadow checking on err
+      - linters:
+          - govet
+        text: 'shadow: declaration of "err"'
 
-issues:
-  exclude-rules:
-    # Exclude some linters from running on test files
-    - path: _test\.go
-      linters:
-        - errcheck
-        - unparam
+formatters:
+  enable:
+    - gofmt
+    - goimports
 
-    # Exclude shadow checking on err
-    - linters:
-        - govet
-      text: 'shadow: declaration of "err"'
+  settings:
+    gofmt:
+      simplify: true
 
-  max-issues-per-linter: 50
-  max-same-issues: 3
+    goimports:
+      local-prefixes:
+        - github.com/aluedeke/go-codesign

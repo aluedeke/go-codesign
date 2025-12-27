@@ -58,7 +58,8 @@ wda-test: build testdata
 		--app=$(WDA_RESIGNED) \
 		--p12=$$CODESIGN_P12 \
 		--profile=$$CODESIGN_PROFILE \
-		--password=$$CODESIGN_PASSWORD
+		--password=$$CODESIGN_PASSWORD \
+		--inplace
 	@echo ""
 	@echo "=== Installing WDA on device ==="
 	ios install --path=$(WDA_RESIGNED)

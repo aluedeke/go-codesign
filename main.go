@@ -6,11 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/aluedeke/go-codesign/pkg/codesign"
 	"github.com/docopt/docopt-go"
+
+	"github.com/aluedeke/go-codesign/pkg/codesign"
 )
 
-const version = "1.0.0"
+// Version info - set by goreleaser ldflags
+var version = "dev"
 
 const usage = `go-codesign - iOS App Code Signing Tool
 
@@ -204,7 +206,7 @@ func runResign(opts docopt.Opts) error {
 		shouldCleanup = true
 		defer func() {
 			if shouldCleanup {
-				os.RemoveAll(tempDir)
+				_ = os.RemoveAll(tempDir)
 			}
 		}()
 
@@ -225,7 +227,7 @@ func runResign(opts docopt.Opts) error {
 		shouldCleanup = true
 		defer func() {
 			if shouldCleanup {
-				os.RemoveAll(tempDir)
+				_ = os.RemoveAll(tempDir)
 			}
 		}()
 
@@ -320,7 +322,7 @@ func showAppInfo(inputPath string, showSignature, recursive bool) error {
 		shouldCleanup = true
 		defer func() {
 			if shouldCleanup {
-				os.RemoveAll(tempDir)
+				_ = os.RemoveAll(tempDir)
 			}
 		}()
 

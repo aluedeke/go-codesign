@@ -65,7 +65,7 @@ func Resign(opts ResignOptions) error {
 	}
 
 	// Prepare entitlements
-	// Use the entitlements from the profile as-is (like zsign does)
+	// Use the entitlements from the profile as-is
 	// Do NOT update wildcard entitlements - iOS handles this at runtime
 	entitlements := profile.Entitlements
 
@@ -76,7 +76,6 @@ func Resign(opts ResignOptions) error {
 
 	// Replace embedded.mobileprovision ONLY for .app bundles
 	// Nested bundles (frameworks, xctest, etc.) should NOT have embedded.mobileprovision
-	// This matches zsign behavior
 	ext := filepath.Ext(opts.AppPath)
 	if ext == ".app" {
 		embeddedProfilePath := filepath.Join(opts.AppPath, "embedded.mobileprovision")
@@ -124,7 +123,7 @@ func ResignApp(appPath string, identity *SigningIdentity, profile *ProvisioningP
 	}
 
 	// Prepare entitlements
-	// Use the entitlements from the profile as-is (like zsign does)
+	// Use the entitlements from the profile as-is
 	entitlements := profile.Entitlements
 
 	entitlementsXML, err := EntitlementsToXML(entitlements)
@@ -134,12 +133,7 @@ func ResignApp(appPath string, identity *SigningIdentity, profile *ProvisioningP
 
 	// Replace provisioning profile
 	embeddedProfilePath := filepath.Join(appPath, "embedded.mobileprovision")
-	profileData, err := os.ReadFile(embeddedProfilePath)
-	if err == nil {
-		// There was an existing profile, we need the raw bytes
-		// This is a simplified path - in real usage, you'd pass the profile bytes
-	}
-	_ = profileData // Suppress unused warning
+	_, _ = os.ReadFile(embeddedProfilePath) // Check if existing profile exists (ignored for now)
 
 	// Update Info.plist if needed
 	if newBundleID != "" {

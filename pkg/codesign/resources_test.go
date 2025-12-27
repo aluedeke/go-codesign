@@ -209,7 +209,7 @@ func TestGenerateCodeResources_Rules(t *testing.T) {
 	}
 
 	// Check essential rules
-	if _, ok := rules["^.*"]; !ok {
+	if _, exists := rules["^.*"]; !exists {
 		t.Error("rules missing '^.*' pattern")
 	}
 
@@ -220,7 +220,7 @@ func TestGenerateCodeResources_Rules(t *testing.T) {
 	}
 
 	// Check rules2 essential patterns
-	if _, ok := rules2["^.*"]; !ok {
+	if _, exists := rules2["^.*"]; !exists {
 		t.Error("rules2 missing '^.*' pattern")
 	}
 
@@ -230,18 +230,26 @@ func TestGenerateCodeResources_Rules(t *testing.T) {
 }
 
 func TestShouldOmit(t *testing.T) {
+	// Note: shouldOmit no longer handles _CodeSignature - that's handled
+	// directly in GenerateCodeResources which skips only the main app's
+	// _CodeSignature/CodeResources but includes nested bundle CodeResources.
+	// All files are hashed except:
+	// - Main executable
+	// - Main app's _CodeSignature/CodeResources
 	tests := []struct {
 		path     string
 		expected bool
 	}{
-		{"_CodeSignature", true},
-		{"_CodeSignature/CodeResources", true},
 		{".DS_Store", true},
 		{"folder/.DS_Store", true},
 		{"._hidden", true},
+		{"folder/._hidden", true},
+		{"en.lproj/locversion.plist", true},
 		{"AppIcon.png", false},
 		{"Frameworks/Foo.framework/_CodeSignature/CodeResources", false},
 		{"PlugIns/Widget.appex/_CodeSignature/CodeResources", false},
+		{"_CodeSignature", false},               // Not omitted by shouldOmit anymore
+		{"_CodeSignature/CodeResources", false}, // Handled in GenerateCodeResources
 	}
 
 	for _, tc := range tests {
@@ -265,19 +273,6 @@ func TestHashData(t *testing.T) {
 	if len(hash) != 32 {
 		t.Errorf("Expected 32 byte hash, got %d", len(hash))
 	}
-}
-
-// Helper function to extract hash bytes from various plist value types
-func extractHash(v interface{}) []byte {
-	switch val := v.(type) {
-	case []byte:
-		return val
-	case map[string]interface{}:
-		if hash, ok := val["hash"].([]byte); ok {
-			return hash
-		}
-	}
-	return nil
 }
 
 // TestHashFileSHA1_VerifyAlgorithm verifies we're using actual SHA1, not truncated SHA256
