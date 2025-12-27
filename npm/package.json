@@ -1,6 +1,6 @@
 {
   "name": "go-codesign",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Pure Go implementation for iOS code signing - resign IPA files and .app bundles without macOS",
   "keywords": [
     "ios",
