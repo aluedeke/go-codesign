@@ -5,7 +5,11 @@
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "extra-files": [
-        "npm/package.json"
+        {
+          "type": "json",
+          "path": "npm/package.json",
+          "jsonpath": "$.version"
+        }
       ]
     }
   }
