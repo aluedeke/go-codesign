@@ -39,6 +39,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           hooks: goreleaser
           allow-initial-development-versions: true
+          force-bump-patch-version: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -57,10 +58,49 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Download all release binaries
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+
+          declare -A PLATFORMS=(
+            ["darwin_arm64"]="darwin arm64 tar.gz"
+            ["darwin_amd64"]="darwin amd64 tar.gz"
+            ["linux_arm64"]="linux arm64 tar.gz"
+            ["linux_amd64"]="linux amd64 tar.gz"
+            ["windows_amd64"]="windows amd64 zip"
+          )
+
+          for platform in "${!PLATFORMS[@]}"; do
+            read -r goos goarch ext <<< "${PLATFORMS[$platform]}"
+            ASSET="go-codesign_${VERSION}_${goos}_${goarch}.${ext}"
+            URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/${ASSET}"
+
+            echo "Downloading ${URL}"
+            mkdir -p "npm/dist/${platform}"
+            curl -sL "${URL}" -o "archive.${ext}"
+
+            if [ "$ext" = "zip" ]; then
+              unzip -o "archive.${ext}" -d "npm/dist/${platform}"
+            else
+              tar -xzf "archive.${ext}" -C "npm/dist/${platform}"
+            fi
+
+            rm "archive.${ext}"
+
+            # Remove extra files, keep only binary
+            if [ "$goos" = "windows" ]; then
+              find "npm/dist/${platform}" -type f ! -name "*.exe" -delete
+            else
+              find "npm/dist/${platform}" -type f ! -name "go-codesign" -delete
+            fi
+
+            ls -la "npm/dist/${platform}"
+          done
+
       - name: Update npm package version
         working-directory: npm
         run: npm version ${{ needs.release.outputs.version }} --no-git-tag-version
 
-      - name: Publish to npm with provenance
+      - name: Publish to npm
         working-directory: npm
-        run: npm publish
+        run: npm publish --access public
