@@ -1,5 +1,11 @@
 # go-codesign
 
+[![CI](https://github.com/aluedeke/go-codesign/actions/workflows/ci.yml/badge.svg)](https://github.com/aluedeke/go-codesign/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/aluedeke/go-codesign.svg)](https://pkg.go.dev/github.com/aluedeke/go-codesign)
+[![npm](https://img.shields.io/npm/v/go-codesign)](https://www.npmjs.com/package/go-codesign)
+[![Run with npx](https://img.shields.io/badge/run-npx%20go--codesign-brightgreen)](https://www.npmjs.com/package/go-codesign)
+
+
 > **Alpha Status**: This project is in early development. The API may change, and there may be bugs or missing features. Use at your own risk and please report any issues you encounter.
 
 A pure Go implementation for iOS code signing. Resign IPA files and `.app` bundles with new certificates and provisioning profiles without requiring Apple's `codesign` tool or macOS.
@@ -16,7 +22,19 @@ A pure Go implementation for iOS code signing. Resign IPA files and `.app` bundl
 
 ## Installation
 
-### From source
+### Via npm/npx (easiest)
+
+```bash
+npx go-codesign --help
+```
+
+Or install globally:
+
+```bash
+npm install -g go-codesign
+```
+
+### Via Go
 
 ```bash
 go install github.com/aluedeke/go-codesign@latest
