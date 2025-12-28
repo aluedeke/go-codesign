@@ -23,23 +23,29 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.semrel.outputs.version }}
+      version: ${{ steps.create_release.outputs.current_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Create Release
+        id: create_release
+        uses: zendesk/action-create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_schema: semantic
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
-      - uses: go-semantic-release/action@v1
-        id: semrel
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          hooks: goreleaser
-          allow-initial-development-versions: true
-          force-bump-patch-version: true
+          version: latest
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -61,6 +67,8 @@ jobs:
       - name: Download all release binaries
         run: |
           VERSION="${{ needs.release.outputs.version }}"
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
 
           declare -A PLATFORMS=(
             ["darwin_arm64"]="darwin arm64 tar.gz"
@@ -99,7 +107,10 @@ jobs:
 
       - name: Update npm package version
         working-directory: npm
-        run: npm version ${{ needs.release.outputs.version }} --no-git-tag-version
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          VERSION="${VERSION#v}"
+          npm version ${VERSION} --no-git-tag-version
 
       - name: Publish to npm
         working-directory: npm
