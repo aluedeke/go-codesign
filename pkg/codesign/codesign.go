@@ -1,8 +1,5 @@
 package codesign
 
-// Native code signing implementation for iOS apps
-// This provides a clean implementation without the bugs in go-macho library
-
 import (
 	"bytes"
 	"crypto"
